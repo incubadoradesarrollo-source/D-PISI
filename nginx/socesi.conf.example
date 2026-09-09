@@ -1,0 +1,31 @@
+# Incluir estas locations dentro del server HTTPS existente de socesi.com.
+# Los puertos son los valores predeterminados API_PORT/WEB_PORT de Compose;
+# adaptarlos si el servidor configura otros. No reemplaza TLS ni certificados.
+client_max_body_size 32m;
+
+location /api/ {
+    proxy_pass http://127.0.0.1:4000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # Este ejemplo supone que Nginx es el único proxy público.
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_cache off;
+}
+
+location /uploads/ {
+    proxy_pass http://127.0.0.1:4000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+}
+
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_buffering off;
+}

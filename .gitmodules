@@ -1,0 +1,6 @@
+[submodule "backend"]
+	path = backend
+	url = https://github.com/incubadoradesarrollo-source/B-PISI.git
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/incubadoradesarrollo-source/F-PISI.git
