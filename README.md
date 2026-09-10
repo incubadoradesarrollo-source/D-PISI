@@ -26,7 +26,7 @@ git submodule update --init --recursive
 
 ## Docker local
 
-Copiar `.env.example` a `.env` y completar `POSTGRES_PASSWORD`, `JWT_ACCESS_SECRET` y `JWT_REFRESH_SECRET` con valores propios y distintos. Después:
+Copiar `.env.example` a `.env` y completar `POSTGRES_PASSWORD`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` y `TOTP_ENCRYPTION_KEY` con valores propios y distintos. La clave TOTP debe generarse con `openssl rand -hex 32` y conservarse protegida para futuros reinicios/restauraciones. Después:
 
 ```bash
 docker compose config --quiet
@@ -53,13 +53,15 @@ El navegador utiliza `/api/...` y `/uploads/...`. Next reenvía esas rutas a `ht
 
 Compose deriva `PUBLIC_API_URL` y `NEXT_PUBLIC_SITE_URL` de `PUBLIC_WEB_URL`; no configurar URLs privadas como origen público. `NEXT_PUBLIC_SITE_URL` se incorpora al build. Si cambias `WEB_PORT`, ajustar también `PUBLIC_WEB_URL` y `WEB_ORIGIN`.
 
-La administración `/admin/institucion` permite cambiar logos claros/oscuros, favicon, tamaños y paletas. La migración aditiva `20260909180000_parametric_identity` se aplica antes de iniciar la API. Se conserva la paleta azul predeterminada; el morado no está declarado como color oficial.
+La administración `/admin/institucion` permite cambiar logos claros/oscuros, favicon, tamaños y paletas. La identidad utiliza guindo `#7B1113`, borgoña `#6B1D2F`, blanco y grises, con una variante oscura de contraste accesible. La migración de paleta actualiza la configuración guardada conservando logos y colores de estados.
+
+Las cuentas predeterminadas conservan sus contraseñas iniciales y deben cambiarlas antes de acceder al sistema. TOTP se configura en **Mi cuenta → Seguridad**. Las migraciones se aplican automáticamente al iniciar la API. Consultar [seguridad y autenticación](backend/SEGURIDAD.md) para los flujos, códigos de recuperación y respaldo de la clave de cifrado.
 
 ## Actualizar el servidor existente
 
 1. Respaldar PostgreSQL y uploads antes de actualizar.
 2. Preservar el **nombre del proyecto Compose anterior**. Ejecutar desde otra carpeta cambia el nombre predeterminado y puede crear volúmenes vacíos diferentes. Establecer `COMPOSE_PROJECT_NAME` en `.env` con el nombre que ya utiliza el servidor, o usar `docker compose -p NOMBRE_EXISTENTE` en todos los comandos. Consultar los proyectos con `docker compose ls`.
-3. Configurar `PUBLIC_WEB_URL=https://socesi.com`, `WEB_ORIGIN=https://socesi.com`, desactivar demo/seed y conservar los secretos. El backend exige `AUTH_EMAIL_WEBHOOK_URL` y su secreto para el correo transaccional fuera de la demo local.
+3. Configurar `PUBLIC_WEB_URL=https://socesi.com`, `WEB_ORIGIN=https://socesi.com`, desactivar demo/seed y conservar los secretos. Añadir `TOTP_ENCRYPTION_KEY`; no cambiarla después sin recifrar los registros existentes. El backend exige `AUTH_EMAIL_WEBHOOK_URL` y su secreto para el correo transaccional fuera de la demo local. Completar el cambio inicial de las cuentas asignadas antes de abrir el portal al público.
 4. Adaptar `nginx/socesi.conf.example` dentro del bloque HTTPS existente. El ejemplo envía `/api/` y `/uploads/` directamente a la API y utiliza un salto confiable. Conservar los certificados TLS. Ajustar la cadena de confianza si existe CDN u otro proxy anterior.
 5. Obtener las versiones fijadas y reconstruir:
 
@@ -98,6 +100,7 @@ cd backend
 npm ci
 npm run prisma:generate
 npm run check
+npm run test:auth:integration
 cd ../frontend
 npm ci
 npm run check
@@ -105,5 +108,7 @@ npm run test:proxy
 ```
 
 Las pruebas de contratos del backend necesitan el frontend hermano; esta estructura de submódulos lo proporciona. CI descarga ambos recursivamente. Si los repositorios son privados, configurar en D-PISI el secreto `SUBMODULES_TOKEN` con permiso de lectura de B-PISI y F-PISI: el token predeterminado de Actions normalmente solo permite leer el repositorio actual.
+
+Los contenedores y CI utilizan Node 24 LTS. La prueba de autenticación inicia un PostgreSQL temporal mediante Docker, prueba las migraciones y el flujo real y elimina su contenedor al terminar.
 
 La publicación de los repositorios no ejecuta el despliegue en producción. El motor Docker y las cuentas reales del servidor deben estar disponibles para completar la validación operativa.
