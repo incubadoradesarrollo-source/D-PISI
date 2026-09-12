@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -16,11 +17,20 @@ jobs:
       run:
         working-directory: backend
     steps:
+      - name: Verificar acceso a los submódulos privados
+        working-directory: .
+        env:
+          SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
+        run: |
+          if [ -z "$SUBMODULES_TOKEN" ]; then
+            echo "::error::Configura el secreto SUBMODULES_TOKEN en D-PISI con lectura de Contents para D-PISI, B-PISI y F-PISI. B-PISI es privado; el token automático no puede descargarlo."
+            exit 1
+          fi
       - name: Checkout
         uses: actions/checkout@v7
         with:
           submodules: recursive
-          token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
+          token: ${{ secrets.SUBMODULES_TOKEN }}
       - name: Node.js
         uses: actions/setup-node@v7
         with:
@@ -41,11 +51,20 @@ jobs:
       run:
         working-directory: frontend
     steps:
+      - name: Verificar acceso a los submódulos privados
+        working-directory: .
+        env:
+          SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
+        run: |
+          if [ -z "$SUBMODULES_TOKEN" ]; then
+            echo "::error::Configura el secreto SUBMODULES_TOKEN en D-PISI con lectura de Contents para D-PISI, B-PISI y F-PISI. B-PISI es privado; el token automático no puede descargarlo."
+            exit 1
+          fi
       - name: Checkout
         uses: actions/checkout@v7
         with:
           submodules: recursive
-          token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
+          token: ${{ secrets.SUBMODULES_TOKEN }}
       - name: Node.js
         uses: actions/setup-node@v7
         with:
