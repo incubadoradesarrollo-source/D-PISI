@@ -1,4 +1,4 @@
-# Incluir estas locations dentro del server HTTPS existente de socesi.com.
+# Incluir estas locations dentro del server HTTPS del dominio definitivo.
 # Los puertos son los valores predeterminados API_PORT/WEB_PORT de Compose;
 # adaptarlos si el servidor configura otros. No reemplaza TLS ni certificados.
 client_max_body_size 32m;

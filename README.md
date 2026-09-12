@@ -2,6 +2,8 @@
 
 Configuración de despliegue de la Carrera de Ingeniería de Sistemas de la Universidad Privada del Valle, Bolivia.
 
+Consulta la [guía de despliegue y correo](DESPLIEGUE.md) y el [informe de revisión final](REVISION-FINAL.md). El dominio público definitivo está pendiente de confirmación. El registro admite solo `@univalle.edu`, con activación por correo; SMTP/Gmail está soportado directamente.
+
 El código se incorpora mediante submódulos Git:
 
 | Carpeta | Repositorio |
@@ -44,8 +46,8 @@ El navegador utiliza `/api/...` y `/uploads/...`. Next reenvía esas rutas a `ht
 
 | Variable | Docker local | Producción |
 |---|---|---|
-| `PUBLIC_WEB_URL` | `http://localhost:3000` | `https://socesi.com` |
-| `WEB_ORIGIN` | localhost y 127.0.0.1 | `https://socesi.com` |
+| `PUBLIC_WEB_URL` | `http://localhost:3000` | Origen HTTPS definitivo |
+| `WEB_ORIGIN` | localhost y 127.0.0.1 | El mismo origen HTTPS |
 | `TRUST_PROXY_HOPS` | 1 con Next | 1 con Nginx directo a API; 2 pasando por Next |
 | `AUTH_DEV_LINKS` | true solo en demo local | false |
 | `SEED_ON_FIRST_RUN` | true para inicializar una demo vacía | false |
@@ -61,7 +63,7 @@ Las cuentas predeterminadas conservan sus contraseñas iniciales y deben cambiar
 
 1. Respaldar PostgreSQL y uploads antes de actualizar.
 2. Preservar el **nombre del proyecto Compose anterior**. Ejecutar desde otra carpeta cambia el nombre predeterminado y puede crear volúmenes vacíos diferentes. Establecer `COMPOSE_PROJECT_NAME` en `.env` con el nombre que ya utiliza el servidor, o usar `docker compose -p NOMBRE_EXISTENTE` en todos los comandos. Consultar los proyectos con `docker compose ls`.
-3. Configurar `PUBLIC_WEB_URL=https://socesi.com`, `WEB_ORIGIN=https://socesi.com`, desactivar demo/seed y conservar los secretos. Añadir `TOTP_ENCRYPTION_KEY`; no cambiarla después sin recifrar los registros existentes. El backend exige `AUTH_EMAIL_WEBHOOK_URL` y su secreto para el correo transaccional fuera de la demo local. Completar el cambio inicial de las cuentas asignadas antes de abrir el portal al público.
+3. Configurar `PUBLIC_WEB_URL` y `WEB_ORIGIN` con el origen HTTPS definitivo, desactivar demo/seed y conservar los secretos. Mantener `TOTP_ENCRYPTION_KEY`; no cambiarla sin recifrar los registros existentes. Configurar SMTP y su contraseña de aplicación, o el webhook de correo como alternativa. Completar el cambio inicial de las cuentas asignadas antes de abrir el portal al público. El generador `node scripts/preparar-despliegue.cjs https://tu-dominio-real` prepara `.env.production` a partir de las claves del `.env` local.
 4. Adaptar `nginx/socesi.conf.example` dentro del bloque HTTPS existente. El ejemplo envía `/api/` y `/uploads/` directamente a la API y utiliza un salto confiable. Conservar los certificados TLS. Ajustar la cadena de confianza si existe CDN u otro proxy anterior.
 5. Obtener las versiones fijadas y reconstruir:
 
