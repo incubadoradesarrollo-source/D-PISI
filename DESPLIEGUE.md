@@ -16,7 +16,7 @@ Desde la raíz y con Node 24:
 node scripts/preparar-despliegue.cjs https://www.isilp.com
 ```
 
-El comando genera `.env.production` conservando los secretos existentes y configurando la URL pública, CORS, correo real, Swagger desactivado y seed desactivado. No modifica el `.env` local. Está pensado para Nginx con `/api/` y `/uploads/` dirigidos directamente al backend (`TRUST_PROXY_HOPS=1`). Si se añade otra capa de proxy, revisar esa cantidad y las cabeceras confiables.
+El comando genera `.env.production` conservando los secretos existentes y configurando la URL pública, CORS, correo real, Swagger desactivado y seed desactivado. No modifica el `.env` local. Está pensado para Nginx con `/api/` y `/uploads/` dirigidos directamente al backend (`TRUST_PROXY_HOPS=1`). Si se añade otra capa de proxy, revisar esa cantidad y las cabeceras confiables. Detrás de Cloudflare (producción actual en Coolify) configurar `CLIENT_IP_HEADER=cf-connecting-ip` en la API; sin ella la API ve la IP del proxy interno y todos los usuarios comparten el límite de peticiones (error «Too Many Requests» al registrarse).
 
 ## Servidor
 

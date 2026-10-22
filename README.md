@@ -49,6 +49,7 @@ El navegador utiliza `/api/...` y `/uploads/...`. Next reenvía esas rutas a `ht
 | `PUBLIC_WEB_URL` | `http://localhost:3000` | Origen HTTPS definitivo |
 | `WEB_ORIGIN` | localhost y 127.0.0.1 | El mismo origen HTTPS |
 | `TRUST_PROXY_HOPS` | 1 con Next | 1 con Nginx directo a API; 2 pasando por Next |
+| `CLIENT_IP_HEADER` | vacío | `cf-connecting-ip` detrás de Cloudflare; sin ella todos los usuarios comparten el límite de peticiones |
 | `AUTH_DEV_LINKS` | true solo en demo local | false |
 | `SEED_ON_FIRST_RUN` | true para inicializar una demo vacía | false |
 | `ALLOW_DEMO_SEED` | false | false |

@@ -17,7 +17,7 @@ try {
   for (const key of ['POSTGRES_PASSWORD', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'TOTP_ENCRYPTION_KEY', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD']) {
     if (!env[key]) throw new Error(`Falta ${key} en .env.`);
   }
-  const updates = { PUBLIC_WEB_URL: url.origin, WEB_ORIGIN: url.origin, TRUST_PROXY_HOPS: '1', AUTH_DEV_LINKS: 'false', ENABLE_SWAGGER: 'false', SEED_ON_FIRST_RUN: 'false', ALLOW_DEMO_SEED: 'false' };
+  const updates = { PUBLIC_WEB_URL: url.origin, WEB_ORIGIN: url.origin, TRUST_PROXY_HOPS: '1', CLIENT_IP_HEADER: 'cf-connecting-ip', AUTH_DEV_LINKS: 'false', ENABLE_SWAGGER: 'false', SEED_ON_FIRST_RUN: 'false', ALLOW_DEMO_SEED: 'false' };
   let output = source;
   for (const [key, value] of Object.entries(updates)) {
     const expression = new RegExp(`^${key}=.*$`, 'm');
