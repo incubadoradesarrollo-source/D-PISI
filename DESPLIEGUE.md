@@ -76,3 +76,139 @@ Actualizar primero la imagen del backend. Si Coolify utiliza GHCR, ejecutar manu
 El diagnóstico comprueba TLS y autenticación sin enviar mensajes. `SMTP_AUTH` indica credenciales rechazadas; `SMTP_CONNECTION` indica un problema de DNS, red, puerto o TLS; `SMTP_CONFIG` indica variables ausentes o inválidas. `MAIL_DELIVERY` requiere revisar el proveedor. Si aparece «Missing script», la imagen no contiene la versión actual. Compartir solo la categoría del error, nunca secretos ni enlaces de autenticación.
 
 Una verificación correcta no confirma recepción: completar después un registro con un buzón institucional propio, abrir el enlace y comprobar el perfil. Conservar `PUBLIC_WEB_URL=https://www.isilp.com` y los secretos existentes del servidor.
+
+## Actualización: cursos de formación continua, Sociedad Científica y tema del sistema (2026-10)
+
+### Alcance
+
+1. Repositorios y ramas:
+   - B-PISI: rama `feature/cursos-sociedad-cientifica`.
+   - F-PISI: rama `feature/actualizacion-cursos-sociedad-tema`.
+2. Migración nueva `20261024120000_cursos_sociedad_cientifica`, estrictamente aditiva:
+   - crea los enums `ScientificSocietyMembershipStatus` y `ScientificSocietyRole`;
+   - crea la tabla `ScientificSocietyMember`, vacía;
+   - añade tres columnas nullable a `Mentorship`: `assistantId`, `introVideoId` y `whatsappUrl`, con índice y clave foránea `ON DELETE SET NULL`.
+3. La migración no borra, no renombra ni actualiza filas. Las API anteriores siguen funcionando porque los campos solo se añaden.
+4. Compatibilidad:
+   - el backend nuevo funciona con el frontend anterior;
+   - el frontend nuevo **no** funciona bien con el backend anterior, porque usa `/api/scientific-society`, `/api/communities/memberships/mine` y el parámetro `roles=` del directorio.
+
+### Advertencia: despliegue automático
+
+- Un push a `main` de F-PISI ejecuta el workflow que publica la imagen y llama al webhook de Coolify. El despliegue es **inmediato**.
+- B-PISI solo publica al ejecutar **Actions → Run workflow**.
+
+Por eso, **no fusionar F-PISI a `main` antes de que el backend nuevo esté en producción.**
+
+### Orden de despliegue
+
+Seguir estos pasos en el orden indicado.
+
+1. Respaldo previo (obligatorio) de la base de datos y de `uploads`.
+
+   Con Docker Compose, consultar antes el nombre del proyecto con `docker compose ls` y añadir `-p NOMBRE` a los comandos si hace falta:
+
+   ```bash
+   docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > respaldo-AAAAMMDD-HHMM.dump
+   ls -lh respaldo-AAAAMMDD-HHMM.dump
+   pg_restore --list respaldo-AAAAMMDD-HHMM.dump | head
+   docker compose cp api:/app/uploads ./uploads-respaldo-AAAAMMDD
+   ```
+
+   Verificar que el archivo no tiene tamaño 0 y que `pg_restore --list` muestra tablas como `"User"` y `"CommunityMember"`.
+
+   En Coolify, usar el respaldo programado o manual de la base de datos, o ejecutar el mismo `pg_dump` desde la terminal del contenedor de PostgreSQL, y descargar el archivo antes de seguir.
+
+   **No continuar si el respaldo no se completó y verificó.**
+
+2. Ensayo opcional recomendado: restaurar el respaldo en un PostgreSQL desechable y ejecutar allí la verificación del punto 4 antes de tocar producción.
+
+3. Capturar huellas antes de arrancar la versión nueva. Solo realiza lecturas dentro de una transacción `READ ONLY`. Con la imagen nueva apuntando a la base, ejecutar una vez, antes de arrancar la API:
+
+   ```bash
+   docker compose run --rm --entrypoint node -v "$PWD:/host" api scripts/verificar-migracion.cjs capturar /host/antes.json
+   ```
+
+   El archivo `antes.json` queda en la carpeta actual del servidor. Conservarlo hasta completar el punto 4.
+
+4. Fusionar B-PISI a `main`, ejecutar **Actions → Run workflow** y desplegar la API. Las migraciones se aplican al arrancar (`prisma migrate deploy`). Después:
+   - comprobar `https://www.isilp.com/api/health`;
+   - revisar los logs de arranque y confirmar que aparece la migración aplicada;
+   - ejecutar la comparación con las huellas capturadas:
+
+   ```bash
+   docker compose run --rm --entrypoint node -v "$PWD:/host" api scripts/verificar-migracion.cjs comparar /host/antes.json
+   ```
+
+   La salida debe indicar **«Sin diferencias»**. Si indica otra cosa, detenerse y revisar antes de continuar.
+
+5. Comprobar con el frontend **anterior** todavía en línea: inicio de sesión, perfil, roles y comunidades.
+
+6. Fusionar F-PISI (`feature/actualizacion-cursos-sociedad-tema`) a `main`. Esto despliega el frontend mediante su workflow.
+
+7. En D-PISI, actualizar los punteros de los submódulos `backend` y `frontend` a los commits fusionados y hacer commit:
+
+   ```bash
+   git -C backend checkout main && git -C backend pull
+   git -C frontend checkout main && git -C frontend pull
+   git add backend frontend
+   git commit -m "Actualiza submódulos con cursos, Sociedad Científica y tema"
+   ```
+
+### Verificación posterior
+
+1. Iniciar sesión con cuentas existentes.
+2. Revisar perfiles, roles y puntos.
+3. Revisar membresías de comunidades y contadores. `/api/communities` debe seguir mostrando 11, 12 y 9 miembros en las tres comunidades actuales, salvo altas nuevas.
+4. `/sociedad-cientifica` muestra la Sociedad vacía hasta que ADMIN cargue miembros y directiva desde `/admin/sociedad`.
+5. `/mentorias` redirige con 308 a `/cursos`.
+6. `/comunidades?vista=sociedad` redirige a `/sociedad-cientifica`.
+7. Crear un curso sin campos opcionales y otro con auxiliar, enlace de WhatsApp y video.
+8. Tema: en una primera visita (sin `isi-theme` en `localStorage`) se usa el tema del dispositivo.
+9. Las páginas con ISR pueden mostrar datos del build durante hasta 60 segundos tras el despliegue. Esperar antes de dar por verificado el contenido.
+
+### Primeros pasos funcionales
+
+1. La Sociedad Científica empieza sin miembros. No se derivó de las comunidades porque son organizaciones distintas.
+2. ADMIN debe registrar la directiva y los miembros, o aprobar las solicitudes, en `/admin/sociedad`.
+
+### Recuperación si algo falla
+
+1. Si falla el frontend:
+   - volver a desplegar la imagen anterior de F-PISI (tag `ghcr.io/incubadoradesarrollo-source/f-pisi:<sha anterior>` en Coolify), o revertir el merge en `main`, lo que vuelve a desplegar;
+   - el backend nuevo es compatible con el frontend anterior, por lo que no es necesario revertirlo.
+2. Si falla el backend con la migración ya aplicada:
+   - antes de volver atrás el backend, volver atrás también el frontend;
+   - desplegar la imagen anterior de B-PISI (`ghcr.io/incubadoradesarrollo-source/b-pisi:<sha anterior>`);
+   - no hace falta revertir la migración: es aditiva y el código anterior ignora las tablas y columnas nuevas.
+3. Si la migración falla a medias o hay daño de datos:
+   1. detener la API;
+   2. restaurar el respaldo verificado con `pg_restore --clean --if-exists -U USUARIO -d BASE respaldo.dump` dentro del contenedor de la base, o con la restauración de Coolify;
+   3. restaurar `uploads` si se tocó;
+   4. desplegar las imágenes anteriores;
+   5. comprobar login y conteos.
+
+   Si `prisma migrate deploy` dejó la migración marcada como fallida, tras restaurar el respaldo ya no figura. No usar `prisma migrate resolve` sin revisar antes el estado.
+4. Reversión manual de solo la migración. Es el último recurso y solo si se confirma que nada usa las tablas nuevas y tras hacer un respaldo:
+
+   ```sql
+   BEGIN;
+   ALTER TABLE "Mentorship" DROP CONSTRAINT IF EXISTS "Mentorship_assistantId_fkey";
+   DROP INDEX IF EXISTS "Mentorship_assistantId_idx";
+   ALTER TABLE "Mentorship" DROP COLUMN IF EXISTS "assistantId", DROP COLUMN IF EXISTS "introVideoId", DROP COLUMN IF EXISTS "whatsappUrl";
+   DROP TABLE IF EXISTS "ScientificSocietyMember";
+   DROP TYPE IF EXISTS "ScientificSocietyRole";
+   DROP TYPE IF EXISTS "ScientificSocietyMembershipStatus";
+   DELETE FROM "_prisma_migrations" WHERE migration_name = '20261024120000_cursos_sociedad_cientifica';
+   COMMIT;
+   ```
+
+   Esta reversión elimina las membresías de la Sociedad, los auxiliares, los enlaces de WhatsApp y los videos cargados después de la actualización.
+
+### Prohibido durante la actualización
+
+- `docker compose down -v`.
+- `prisma migrate reset`.
+- `prisma db push`.
+- Seeds de demostración.
+- `ALLOW_DEMO_SEED=true` sobre producción.
