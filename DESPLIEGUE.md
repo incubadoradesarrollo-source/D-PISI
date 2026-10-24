@@ -129,7 +129,9 @@ Seguir estos pasos en el orden indicado.
    docker compose run --rm --entrypoint node -v "$PWD:/host" api scripts/verificar-migracion.cjs capturar /host/antes.json
    ```
 
-   El archivo `antes.json` queda en la carpeta actual del servidor. Conservarlo hasta completar el punto 4.
+   El archivo `antes.json` queda en la carpeta actual del servidor. Conservarlo hasta completar el punto 4. Con Compose, la imagen nueva debe construirse antes (`docker compose build api` con el submódulo `backend` en la rama nueva) sin arrancarla.
+
+   En Coolify, ejecutar el script desde un checkout de B-PISI en la rama nueva con Node 24 (`npm ci`, `npx prisma generate`) y `DATABASE_URL` apuntando a la base de producción o a la copia restaurada del punto 2: `node scripts/verificar-migracion.cjs capturar antes.json`.
 
 4. Fusionar B-PISI a `main`, ejecutar **Actions → Run workflow** y desplegar la API. Las migraciones se aplican al arrancar (`prisma migrate deploy`). Después:
    - comprobar `https://www.isilp.com/api/health`;
